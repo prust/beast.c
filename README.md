@@ -22,6 +22,7 @@ make install
 ## Compiling (gcc) & Running
 
 ```
-cd ~/beast.c
+git clone https://github.com/prust/beast.c.git
+cd beast.c
 gcc beast.c -o beast -L /usr/local/lib -l SDL2 && ./beast
 ```
