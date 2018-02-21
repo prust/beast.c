@@ -3,13 +3,20 @@
 #include <time.h>
 #include <stdlib.h>
 
-// forward-declaring functions
+// forward-declare functions
+int toX(int ix);
+int toY(int ix);
+int toIx(int x, int y);
 int error(char* activity);
 
 int block_w = 15;
 int block_h = 20;
-float block_density = 0.4;
+int block_density_pct = 40;
+int player_x = 0;
+int player_y = 0;
 
+int num_blocks_w;
+int num_blocks_h;
 
 int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -21,40 +28,26 @@ int main(int num_args, char* args[]) {
 
   srand(time(NULL));
 
-  // use density to determine # of blocks & allocate memory for them
-  // in one shot on the stack
-  // this is more efficient than walking through each x/y block position
-  // & deciding randomly whether to have a block there
-  int num_blocks_w = dm.w / block_w;
-  int num_blocks_h = dm.h / block_h;
+  num_blocks_w = dm.w / block_w;
+  num_blocks_h = dm.h / block_h;
   int num_possible_blocks = num_blocks_w * num_blocks_h;
-  int num_blocks = num_possible_blocks * block_density;
 
-  SDL_Rect blocks[num_blocks];
-
-  for (int i = 0; i < num_blocks; i++) {
-    blocks[i].x = (rand() % num_blocks_w) * block_w;
-    blocks[i].y = (rand() % num_blocks_h) * block_h;
-    blocks[i].w = block_w;
-    blocks[i].h = block_h;
-  }
+  bool blocks[num_possible_blocks];
+  for (int i = 0; i < num_possible_blocks; i++)
+    blocks[i] = (rand() % 100) < block_density_pct;
 
   SDL_Window *window;
   window = SDL_CreateWindow("Beast", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, dm.w, dm.h, SDL_WINDOW_RESIZABLE);
   if (!window)
     return error("creating window");
+  if (SDL_ShowCursor(SDL_DISABLE) < 0)
+    return error("hiding cursor");
   if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
     return error("setting fullscreen");
 
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   if (!renderer)
     return error("creating renderer");
-
-  SDL_Rect player;
-  player.x = 0;
-  player.y = 0;
-  player.w = block_w;
-  player.h = block_h;
 
   bool is_gameover = false;
 
@@ -71,16 +64,16 @@ int main(int num_args, char* args[]) {
               is_gameover = true;
               break;
             case SDLK_LEFT:
-              player.x -= player.w;
+              player_x--;
               break;
             case SDLK_RIGHT:
-              player.x += player.w;
+              player_x++;
               break;
             case SDLK_UP:
-              player.y -= player.h;
+              player_y--;
               break;
             case SDLK_DOWN:
-              player.y += player.h;
+              player_y++;
               break;
         }
         break;
@@ -96,12 +89,27 @@ int main(int num_args, char* args[]) {
     // set block color
     if (SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255) < 0)
       return error("setting block color");
-    if (SDL_RenderFillRect(renderer, &player) < 0)
+    SDL_Rect player_rect = {
+      .x = player_x * block_w,
+      .y = player_y * block_h,
+      .w = block_w,
+      .h = block_h
+    };
+    if (SDL_RenderFillRect(renderer, &player_rect) < 0)
       return error("filling rect");
 
-    for (int i = 0; i < num_blocks; i++)
-      if (SDL_RenderFillRect(renderer, &blocks[i]) < 0)
-        return error("drawing block");
+    for (int i = 0; i < num_possible_blocks; i++) {
+      if (blocks[i]) {
+        SDL_Rect r = {
+          .x = toX(i) * block_w,
+          .y = toY(i) * block_h,
+          .w = block_w,
+          .h = block_h
+        };
+        if (SDL_RenderFillRect(renderer, &r) < 0)
+          return error("drawing block");
+      }
+    }
     
     SDL_RenderPresent(renderer);
     SDL_Delay(10);
@@ -110,6 +118,16 @@ int main(int num_args, char* args[]) {
   SDL_DestroyWindow(window);
   SDL_Quit();
   return 0;
+}
+
+int toX(int ix) {
+  return ix % num_blocks_w;
+}
+int toY(int ix) {
+  return ix / num_blocks_w;
+}
+int toIx(int x, int y) {
+  return x + y * num_blocks_w;
 }
 
 int error(char* activity) {
