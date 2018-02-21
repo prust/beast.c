@@ -7,6 +7,7 @@
 int toX(int ix);
 int toY(int ix);
 int toIx(int x, int y);
+bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y);
 int error(char* activity);
 
 int block_w = 15;
@@ -50,6 +51,8 @@ int main(int num_args, char* args[]) {
     return error("creating renderer");
 
   bool is_gameover = false;
+  int dir_x = 0;
+  int dir_y = 0;
 
   while (!is_gameover) {
     SDL_Event evt;
@@ -59,23 +62,32 @@ int main(int num_args, char* args[]) {
           is_gameover = true;
           break;
         case SDL_KEYDOWN:
+          dir_x = 0;
+          dir_y = 0;
           switch (evt.key.keysym.sym) {
             case SDLK_ESCAPE:
               is_gameover = true;
               break;
             case SDLK_LEFT:
-              player_x--;
+              dir_x = -1;
               break;
             case SDLK_RIGHT:
-              player_x++;
+              dir_x = 1;
               break;
             case SDLK_UP:
-              player_y--;
+              dir_y = -1;
               break;
             case SDLK_DOWN:
-              player_y++;
+              dir_y = 1;
               break;
-        }
+          }
+
+          if (dir_x != 0 || dir_y != 0) {
+            if (push(blocks, num_possible_blocks, dir_x, dir_y, player_x, player_y)) {
+              player_x += dir_x;
+              player_y += dir_y;
+            }
+          }
         break;
       }
     }
@@ -118,6 +130,24 @@ int main(int num_args, char* args[]) {
   SDL_DestroyWindow(window);
   SDL_Quit();
   return 0;
+}
+
+bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y) {
+  int first_ix = toIx(pos_x + dir_x, pos_y + dir_y);
+  int second_ix = toIx(pos_x + dir_x*2, pos_y + dir_y*2);
+  if (blocks[first_ix]) {
+    if (!blocks[second_ix]) {
+      blocks[first_ix] = false;
+      blocks[second_ix] = true;
+      return true;
+    }
+    else {
+      return false; // can't push if there are two blocks stacked
+    }
+  }
+  else {
+    return true;
+  }
 }
 
 int toX(int ix) {
