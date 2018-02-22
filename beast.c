@@ -10,18 +10,38 @@ int toIx(int x, int y);
 bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y);
 int error(char* activity);
 
-int block_w = 15;
+int block_w = 20;
 int block_h = 20;
-int block_density_pct = 40;
+int block_density_pct = 30;
 int player_x = 0;
 int player_y = 0;
 
 int num_blocks_w;
 int num_blocks_h;
+unsigned int last_move_time = 0;
+int move_interval = 500;
+
+typedef struct {
+  int x;
+  int y;
+} beast;
+const int num_beasts = 5;
+beast beasts[num_beasts];
 
 int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
     return error("initializing SDL");
+
+  beasts[0].x = 10;
+  beasts[0].y = 27;
+  beasts[1].x = 27;
+  beasts[1].y = 02;
+  beasts[2].x = 34;
+  beasts[2].y = 34;
+  beasts[3].x = 15;
+  beasts[3].y = 32;
+  beasts[4].x = 8;
+  beasts[4].y = 29;
 
   SDL_DisplayMode dm;
   if (SDL_GetDesktopDisplayMode(0, &dm) < 0)
@@ -98,17 +118,8 @@ int main(int num_args, char* args[]) {
     if (SDL_RenderClear(renderer) < 0)
       return error("clearing renderer");
 
-    // set block color
     if (SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255) < 0)
       return error("setting block color");
-    SDL_Rect player_rect = {
-      .x = player_x * block_w,
-      .y = player_y * block_h,
-      .w = block_w,
-      .h = block_h
-    };
-    if (SDL_RenderFillRect(renderer, &player_rect) < 0)
-      return error("filling rect");
 
     for (int i = 0; i < num_possible_blocks; i++) {
       if (blocks[i]) {
@@ -121,6 +132,74 @@ int main(int num_args, char* args[]) {
         if (SDL_RenderFillRect(renderer, &r) < 0)
           return error("drawing block");
       }
+    }
+
+    if (SDL_SetRenderDrawColor(renderer, 140, 60, 140, 255) < 0)
+      return error("setting player color");
+    SDL_Rect player_rect = {
+      .x = player_x * block_w,
+      .y = player_y * block_h,
+      .w = block_w,
+      .h = block_h
+    };
+    if (SDL_RenderFillRect(renderer, &player_rect) < 0)
+      return error("filling rect");
+
+    if (SDL_SetRenderDrawColor(renderer, 140, 60, 60, 255) < 0)
+      return error("setting beast color");
+    for(int i = 0; i < num_beasts; ++i) {
+      SDL_Rect beast_rect = {
+        .x = beasts[i].x * block_w,
+        .y = beasts[i].y * block_h,
+        .w = block_w,
+        .h = block_h
+      };
+      if (SDL_RenderFillRect(renderer, &beast_rect) < 0)
+        return error("filling beast rect");
+    }
+
+    if (SDL_GetTicks() - last_move_time >= move_interval) {
+      for (int i = 0; i < num_beasts; ++i) {
+        int x = beasts[i].x;
+        int y = beasts[i].y;
+
+        // half of the time attempt to move vertically, else horizontally
+        if (rand() % 100 < 50) {
+          if (player_x < x)
+            x--;
+          else
+            x++;
+        }
+        else {
+          if (player_y < y)
+            y--;
+          else
+            y++;
+        }
+        if (!blocks[toIx(x, y)]) {
+          beasts[i].x = x;
+          beasts[i].y = y;
+        }
+        else {
+          x = beasts[i].x;
+          y = beasts[i].y;
+          int r = rand() % 100;
+          if (r < 25)
+            x--;
+          else if (r < 50)
+            x++;
+          else if (r < 75)
+            y--;
+          else
+            y++;
+
+          if (!blocks[toIx(x, y)]) {
+            beasts[i].x = x;
+            beasts[i].y = y;
+          }
+        }
+      }
+      last_move_time = SDL_GetTicks();
     }
     
     SDL_RenderPresent(renderer);
