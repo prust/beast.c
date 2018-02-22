@@ -179,6 +179,8 @@ int main(int num_args, char* args[]) {
         if (!blocks[toIx(x, y)]) {
           beasts[i].x = x;
           beasts[i].y = y;
+          if (x == player_x && y == player_y)
+            is_gameover = true;
         }
         else {
           x = beasts[i].x;
