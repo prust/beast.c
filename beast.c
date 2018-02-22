@@ -3,7 +3,14 @@
 #include <time.h>
 #include <stdlib.h>
 
+typedef struct {
+  int x;
+  int y;
+} beast;
+
 // forward-declare functions
+void killBeast(beast* b);
+bool isBeastDead(beast* b);
 int toX(int ix);
 int toY(int ix);
 int toIx(int x, int y);
@@ -21,10 +28,6 @@ int num_blocks_h;
 unsigned int last_move_time = 0;
 int move_interval = 500;
 
-typedef struct {
-  int x;
-  int y;
-} beast;
 const int num_beasts = 5;
 beast beasts[num_beasts];
 
@@ -148,6 +151,8 @@ int main(int num_args, char* args[]) {
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 60, 255) < 0)
       return error("setting beast color");
     for(int i = 0; i < num_beasts; ++i) {
+      if (isBeastDead(&beasts[i]))
+        continue;
       SDL_Rect beast_rect = {
         .x = beasts[i].x * block_w,
         .y = beasts[i].y * block_h,
@@ -160,6 +165,9 @@ int main(int num_args, char* args[]) {
 
     if (SDL_GetTicks() - last_move_time >= move_interval) {
       for (int i = 0; i < num_beasts; ++i) {
+        if (isBeastDead(&beasts[i]))
+          continue;
+
         int x = beasts[i].x;
         int y = beasts[i].y;
 
@@ -216,8 +224,22 @@ int main(int num_args, char* args[]) {
 bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y) {
   int first_ix = toIx(pos_x + dir_x, pos_y + dir_y);
   int second_ix = toIx(pos_x + dir_x*2, pos_y + dir_y*2);
+  int third_ix = toIx(pos_x + dir_x*3, pos_y + dir_y*2);
   if (blocks[first_ix]) {
     if (!blocks[second_ix]) {
+      // check to tell if you're squishing a beast
+      for(int i = 0; i < num_beasts; ++i) {
+        if (beasts[i].x == pos_x + dir_x*2 && beasts[i].y == pos_y + dir_y*2) {
+
+          // if there's a block on the other side, squish beast between blocks
+          if (blocks[third_ix])
+            killBeast(&beasts[i]);
+          // disallow pushing block into beast if there's no block to squish against
+          else
+            return false;
+        }
+      }
+
       blocks[first_ix] = false;
       blocks[second_ix] = true;
       return true;
@@ -229,6 +251,15 @@ bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y) {
   else {
     return true;
   }
+}
+
+void killBeast(beast* b) {
+  b->x = -1;
+  b->y = -1;
+}
+
+bool isBeastDead(beast* b) {
+  return b->x == -1 && b->y == -1;
 }
 
 int toX(int ix) {
