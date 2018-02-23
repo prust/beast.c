@@ -224,7 +224,7 @@ int main(int num_args, char* args[]) {
 bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y) {
   int first_ix = toIx(pos_x + dir_x, pos_y + dir_y);
   int second_ix = toIx(pos_x + dir_x*2, pos_y + dir_y*2);
-  int third_ix = toIx(pos_x + dir_x*3, pos_y + dir_y*2);
+  int third_ix = toIx(pos_x + dir_x*3, pos_y + dir_y*3);
   if (blocks[first_ix]) {
     if (!blocks[second_ix]) {
       // check to tell if you're squishing a beast
