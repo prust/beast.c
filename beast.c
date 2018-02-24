@@ -18,8 +18,8 @@ int toIx(int x, int y);
 bool push(bool blocks[], int dir_x, int dir_y, int pos_x, int pos_y);
 int error(char* activity);
 
-int block_w = 20;
-int block_h = 20;
+int block_w = 25;
+int block_h = 25;
 int block_density_pct = 30;
 int player_x = 0;
 int player_y = 0;
@@ -36,23 +36,26 @@ int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
     return error("initializing SDL");
 
-  // starting positions (TODO: make them randomized)
+  // starting positions (TODO: make these randomized)
   beasts[0].x = 10;
-  beasts[0].y = 27;
+  beasts[0].y = 7;
   beasts[1].x = 27;
-  beasts[1].y = 02;
-  beasts[2].x = 34;
-  beasts[2].y = 34;
+  beasts[1].y = 2;
+  beasts[2].x = 31;
+  beasts[2].y = 14;
   beasts[3].x = 15;
-  beasts[3].y = 32;
+  beasts[3].y = 12;
   beasts[4].x = 8;
-  beasts[4].y = 29;
+  beasts[4].y = 20;
 
   SDL_DisplayMode dm;
   if (SDL_GetDesktopDisplayMode(0, &dm) < 0)
     return error("getting display mode");
 
   srand(time(NULL));
+
+  dm.w = 38 * block_w;
+  dm.h = 28 * block_h;
 
   num_blocks_w = dm.w / block_w;
   num_blocks_h = dm.h / block_h;
@@ -68,8 +71,8 @@ int main(int num_args, char* args[]) {
     return error("creating window");
   if (SDL_ShowCursor(SDL_DISABLE) < 0)
     return error("hiding cursor");
-  if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
-    return error("setting fullscreen");
+  // if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
+  //   return error("setting fullscreen");
 
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   if (!renderer)
@@ -173,43 +176,67 @@ int main(int num_args, char* args[]) {
         int x = beasts[i].x;
         int y = beasts[i].y;
 
-        // half of the time attempt to move vertically, else horizontally
-        if (rand() % 100 < 50) {
-          if (player_x < x)
-            x--;
-          else
-            x++;
-        }
-        else {
-          if (player_y < y)
-            y--;
-          else
-            y++;
-        }
-        if (!blocks[toIx(x, y)]) {
-          beasts[i].x = x;
-          beasts[i].y = y;
-          if (x == player_x && y == player_y)
-            is_gameover = true;
-        }
-        else {
-          x = beasts[i].x;
-          y = beasts[i].y;
-          int r = rand() % 100;
-          if (r < 25)
-            x--;
-          else if (r < 50)
-            x++;
-          else if (r < 75)
-            y--;
-          else
-            y++;
+        int dir_x = 0;
+        int dir_y = 0;
+        if (player_x < x)
+          dir_x = -1;
+        else if (player_x > x)
+          dir_x = 1;
 
-          if (!blocks[toIx(x, y)]) {
-            beasts[i].x = x;
-            beasts[i].y = y;
-          }
+        if (player_y < y)
+          dir_y = -1;
+        else if (player_y > y)
+          dir_y = 1;
+
+        // try to move towards the player, if possible
+        if (dir_x && dir_y && !blocks[toIx(x + dir_x, y + dir_y)]) {
+          x += dir_x;
+          y += dir_y;
         }
+        else if (dir_x && !blocks[toIx(x + dir_x, y)]) {
+          x += dir_x;
+        }
+        else if (dir_y && !blocks[toIx(x, y + dir_y)]) {
+          y += dir_y;
+        }
+        // otherwise, try all other combinations of directions
+        else if (!blocks[toIx(x + 1, y + 1)]) {
+          x++;
+          y++;
+        }
+        else if (!blocks[toIx(x + 1, y)]) {
+          x++;
+        }
+        else if (!blocks[toIx(x, y + 1)]) {
+          y++;
+        }
+        else if (!blocks[toIx(x + 1, y - 1)]) {
+          x++;
+          y--;
+        }
+        else if (!blocks[toIx(x - 1, y + 1)]) {
+          x--;
+          y++;
+        }
+        else if (!blocks[toIx(x - 1, y)]) {
+          x--;
+        }
+        else if (!blocks[toIx(x, y - 1)]) {
+          y--;
+        }
+        else if (!blocks[toIx(x - 1, y - 1)]) {
+          x--;
+          y--;
+        }
+        // if the beast is surrounded by blocks & has nowhere to move, it blows up
+        else {
+          killBeast(&beasts[i]);
+        }
+
+        beasts[i].x = x;
+        beasts[i].y = y;
+        if (x == player_x && y == player_y)
+          is_gameover = true;
       }
       last_move_time = SDL_GetTicks();
     }
