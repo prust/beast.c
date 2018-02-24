@@ -1,8 +1,8 @@
 # beast.c
 
-Clone of classic DOS game in C (SDL)
+Simple clone in C (C99 with SDL) of the 1984 ASCII game [Beast](https://en.wikipedia.org/w/index.php?title=Beast_(video_game)) that I had fond memories of playing as kid. The original DOS game was written in IBM-PC Macro Assembly (MASM), primarily by Dan Baker. In [an email](https://en.wikipedia.org/wiki/Talk:Beast_(video_game)/Dan_Baker_Letters), he recounts some of the history:
 
-**Note:** This is a work-in-progress; I haven't gotten very far yet. My [JavaScript](https://github.com/prust/beast.js) and [Lua](https://github.com/prust/beast-lua) implementations are further along.
+> Alan Brown wrote a routine that would make sound, Derrick [Shadel] wrote a disk I/O routine for saving the high scores, and Mark [Hamilton] wrote a random number generator for me. I distributed Beast as shareware for a few years, and made some money (not much, maybe $100). After WordPerfect came out with the Shell (which allowed multiple programs to be loaded at the same time, but the user could only interact with one at time), I fixed Beast to be "Shell Compatible". WordPerfect bought Beast from me for about $1000 (which my wife and I quickly spent on a video camera), and Beast started shipping with Shell (or Library, what ever they called it).
 
 ## SDL Setup for OSX
 
@@ -26,3 +26,23 @@ git clone https://github.com/prust/beast.c.git
 cd beast.c
 make && ./beast
 ```
+
+## Other Ports
+
+### Javascript (browser, HTML5 Canvas)
+
+* [Beast on Chrome Store (free)](https://chrome.google.com/webstore/detail/beast/fhjaglelmpnoipibchkcdjiejlkodmcp) - This is the most complete rewrite, apparently by the [original author](https://github.com/danbaker)
+* [prust/beast.js](https://github.com/prust/beast.js)
+* [robertprovine/beast](https://github.com/robertprovine/beast)
+
+### Javascript (console, node.js)
+
+* [dominikwilkowski/beast.js](https://github.com/dominikwilkowski/beast.js)
+
+### Lua
+
+* [prust/beast-lua](https://github.com/prust/beast-lua).
+
+### Python
+
+* [houbbit/beast](https://github.com/houbbit/beast)
