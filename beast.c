@@ -1,7 +1,8 @@
-#include "include/SDL.h"
 #include <stdbool.h>
 #include <time.h>
 #include <stdlib.h>
+
+#include "include/SDL.h"
 
 typedef struct {
   int x;
@@ -14,7 +15,7 @@ bool isBeastDead(beast* b);
 int toX(int ix);
 int toY(int ix);
 int toIx(int x, int y);
-bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y);
+bool push(bool blocks[], int dir_x, int dir_y, int pos_x, int pos_y);
 int error(char* activity);
 
 int block_w = 20;
@@ -26,7 +27,7 @@ int player_y = 0;
 int num_blocks_w;
 int num_blocks_h;
 unsigned int last_move_time = 0;
-int move_interval = 500;
+int beast_speed = 500; // ms between moves
 
 const int num_beasts = 5;
 beast beasts[num_beasts];
@@ -35,6 +36,7 @@ int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
     return error("initializing SDL");
 
+  // starting positions (TODO: make them randomized)
   beasts[0].x = 10;
   beasts[0].y = 27;
   beasts[1].x = 27;
@@ -106,7 +108,7 @@ int main(int num_args, char* args[]) {
           }
 
           if (dir_x != 0 || dir_y != 0) {
-            if (push(blocks, num_possible_blocks, dir_x, dir_y, player_x, player_y)) {
+            if (push(blocks, dir_x, dir_y, player_x, player_y)) {
               player_x += dir_x;
               player_y += dir_y;
             }
@@ -163,7 +165,7 @@ int main(int num_args, char* args[]) {
         return error("filling beast rect");
     }
 
-    if (SDL_GetTicks() - last_move_time >= move_interval) {
+    if (SDL_GetTicks() - last_move_time >= beast_speed) {
       for (int i = 0; i < num_beasts; ++i) {
         if (isBeastDead(&beasts[i]))
           continue;
@@ -221,42 +223,50 @@ int main(int num_args, char* args[]) {
   return 0;
 }
 
-bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y) {
-  int first_ix = toIx(pos_x + dir_x, pos_y + dir_y);
-  int second_ix = toIx(pos_x + dir_x*2, pos_y + dir_y*2);
-  if (first_ix >= len || second_ix >= len || first_ix < 0 || second_ix < 0)
+bool push(bool blocks[], int dir_x, int dir_y, int pos_x, int pos_y) {
+  int first_x = pos_x + dir_x;
+  int first_y = pos_y + dir_y;
+  if (first_x < 0 || first_x >= num_blocks_w || first_y < 0 || first_y >= num_blocks_h)
     return false;
 
-  if (!blocks[first_ix])
+  if (!blocks[toIx(first_x, first_y)])
     return true;
 
+  int second_x = pos_x + dir_x*2;
+  int second_y = pos_y + dir_y*2;
+  if (second_x < 0 || second_x >= num_blocks_w || second_y < 0 || second_y >= num_blocks_h)
+    return false;
+
   bool can_push;
-  if (blocks[second_ix]) {
-    can_push = push(blocks, len, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
+  if (blocks[toIx(second_x, second_y)]) {
+    can_push = push(blocks, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
   }
   else {
-    int third_ix = toIx(pos_x + dir_x*3, pos_y + dir_y*3);
-    if (third_ix >= len || third_ix < 0)
-      return false;
-
-    // check to tell if you're squishing a beast
     can_push = true;
-    for(int i = 0; i < num_beasts; ++i) {
-      if (beasts[i].x == pos_x + dir_x*2 && beasts[i].y == pos_y + dir_y*2) {
+    int third_x = pos_x + dir_x*3;
+    int third_y = pos_y + dir_y*3;
 
-        // if there's a block on the other side, squish beast between blocks
-        if (blocks[third_ix])
-          killBeast(&beasts[i]);
-        // disallow pushing block into beast if there's no block to squish against
-        else
-          return false;
+    // only check for a brick on the other side & the possibility of squishing
+    // if we're within bounds
+    if (third_x >= 0 && third_x < num_blocks_w && third_y >= 0 && third_y < num_blocks_h) {
+      // check to tell if you're squishing a beast
+      for(int i = 0; i < num_beasts; ++i) {
+        if (beasts[i].x == second_x && beasts[i].y == second_y) {
+
+          // if there's a block on the other side, squish beast between blocks
+          if (blocks[toIx(third_x, third_y)])
+            killBeast(&beasts[i]);
+          // disallow pushing block into beast if there's no block to squish against
+          else
+            return false;
+        }
       }
     }
   }
 
   if (can_push) {
-    blocks[first_ix] = false;
-    blocks[second_ix] = true;
+    blocks[toIx(first_x, first_y)] = false;
+    blocks[toIx(second_x, second_y)] = true;
   }
   return can_push;
 }
