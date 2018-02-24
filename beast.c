@@ -224,33 +224,41 @@ int main(int num_args, char* args[]) {
 bool push(bool blocks[], int len, int dir_x, int dir_y, int pos_x, int pos_y) {
   int first_ix = toIx(pos_x + dir_x, pos_y + dir_y);
   int second_ix = toIx(pos_x + dir_x*2, pos_y + dir_y*2);
-  int third_ix = toIx(pos_x + dir_x*3, pos_y + dir_y*3);
-  if (blocks[first_ix]) {
-    if (!blocks[second_ix]) {
-      // check to tell if you're squishing a beast
-      for(int i = 0; i < num_beasts; ++i) {
-        if (beasts[i].x == pos_x + dir_x*2 && beasts[i].y == pos_y + dir_y*2) {
+  if (first_ix >= len || second_ix >= len || first_ix < 0 || second_ix < 0)
+    return false;
 
-          // if there's a block on the other side, squish beast between blocks
-          if (blocks[third_ix])
-            killBeast(&beasts[i]);
-          // disallow pushing block into beast if there's no block to squish against
-          else
-            return false;
-        }
-      }
+  if (!blocks[first_ix])
+    return true;
 
-      blocks[first_ix] = false;
-      blocks[second_ix] = true;
-      return true;
-    }
-    else {
-      return false; // can't push if there are two blocks stacked
-    }
+  bool can_push;
+  if (blocks[second_ix]) {
+    can_push = push(blocks, len, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
   }
   else {
-    return true;
+    int third_ix = toIx(pos_x + dir_x*3, pos_y + dir_y*3);
+    if (third_ix >= len || third_ix < 0)
+      return false;
+
+    // check to tell if you're squishing a beast
+    can_push = true;
+    for(int i = 0; i < num_beasts; ++i) {
+      if (beasts[i].x == pos_x + dir_x*2 && beasts[i].y == pos_y + dir_y*2) {
+
+        // if there's a block on the other side, squish beast between blocks
+        if (blocks[third_ix])
+          killBeast(&beasts[i]);
+        // disallow pushing block into beast if there's no block to squish against
+        else
+          return false;
+      }
+    }
   }
+
+  if (can_push) {
+    blocks[first_ix] = false;
+    blocks[second_ix] = true;
+  }
+  return can_push;
 }
 
 void killBeast(beast* b) {
