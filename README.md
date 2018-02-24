@@ -1,6 +1,6 @@
 # beast.c
 
-Simple clone in C (C99 with SDL) of the 1984 ASCII game [Beast](https://en.wikipedia.org/w/index.php?title=Beast_(video_game)) that I had fond memories of playing as kid. The original 1984 DOS game was written in IBM-PC Macro Assembly (MASM), primarily by Dan Baker. In [an email](https://en.wikipedia.org/wiki/Talk:Beast_(video_game)/Dan_Baker_Letters), he recounted some of the history:
+Simple clone in C (C99 with SDL) of the 1984 ASCII game [Beast](https://en.wikipedia.org/w/index.php?title=Beast_(video_game)) that I had fond memories of playing as kid. The original DOS game was written in IBM-PC Macro Assembly (MASM), primarily by Dan Baker. In [an email](https://en.wikipedia.org/wiki/Talk:Beast_(video_game)/Dan_Baker_Letters), he recounted some of the history:
 
 > Alan Brown wrote a routine that would make sound, Derrick [Shadel] wrote a disk I/O routine for saving the high scores, and Mark [Hamilton] wrote a random number generator for me. I distributed Beast as shareware for a few years, and made some money (not much, maybe $100). After WordPerfect came out with the Shell (which allowed multiple programs to be loaded at the same time, but the user could only interact with one at time), I fixed Beast to be "Shell Compatible". WordPerfect bought Beast from me for about $1000 (which my wife and I quickly spent on a video camera), and Beast started shipping with Shell (or Library, what ever they called it).
 
