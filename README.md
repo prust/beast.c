@@ -6,8 +6,6 @@ A simple clone of the 1984 [Beast](https://en.wikipedia.org/w/index.php?title=Be
 
 > Alan Brown wrote a routine that would make sound, Derrick wrote a disk I/O routine for saving the high scores, and Mark wrote a random number generator for me. I distributed Beast as shareware for a few years, and made some money (not much, maybe $100). After WordPerfect came out with the Shell (which allowed multiple programs to be loaded at the same time, but the user could only interact with one at time), I fixed Beast to be "Shell Compatible". WordPerfect bought Beast from me for about $1000 (which my wife and I quickly spent on a video camera), and Beast started shipping with Shell (or Library, what ever they called it).
 
-I have also written ports (at varying levels of completeness) in [JavaScript](https://github.com/prust/beast.js) and [Lua](https://github.com/prust/beast-lua).
-
 ## SDL Setup for OSX
 
 This game relies on the SDL library. Normally this will be bundled with the game, but if you want to compile & run it from scratch, you'll need to create an SDL library and put it somewhere the compiler can find it:
@@ -30,3 +28,20 @@ git clone https://github.com/prust/beast.c.git
 cd beast.c
 make && ./beast
 ```
+
+## Other Ports
+
+### Javascript
+
+* [Beast on Chrome Store (free)](https://chrome.google.com/webstore/detail/beast/fhjaglelmpnoipibchkcdjiejlkodmcp) - This is the most complete rewrite, apparently by the [original author](https://github.com/danbaker)
+* [prust/beast.js](https://github.com/prust/beast.js)
+* [robertprovine/beast](https://github.com/robertprovine/beast)
+* [dominikwilkowski/beast.js](https://github.com/dominikwilkowski/beast.js)
+
+### Lua
+
+* [prust/beast-lua](https://github.com/prust/beast-lua).
+
+### Python
+
+* [houbbit/beast](https://github.com/houbbit/beast)
