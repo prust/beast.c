@@ -24,5 +24,5 @@ make install
 ```
 git clone https://github.com/prust/beast.c.git
 cd beast.c
-gcc beast.c -o beast -L /usr/local/lib -l SDL2 && ./beast
+make && ./beast
 ```
