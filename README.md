@@ -31,11 +31,14 @@ make && ./beast
 
 ## Other Ports
 
-### Javascript
+### Javascript (browser, HTML5 Canvas)
 
 * [Beast on Chrome Store (free)](https://chrome.google.com/webstore/detail/beast/fhjaglelmpnoipibchkcdjiejlkodmcp) - This is the most complete rewrite, apparently by the [original author](https://github.com/danbaker)
 * [prust/beast.js](https://github.com/prust/beast.js)
 * [robertprovine/beast](https://github.com/robertprovine/beast)
+
+### Javascript (console, node.js)
+
 * [dominikwilkowski/beast.js](https://github.com/dominikwilkowski/beast.js)
 
 ### Lua
