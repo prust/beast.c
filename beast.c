@@ -1,8 +1,9 @@
 #include <stdbool.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-#include "include/SDL.h"
+#include "SDL.h"
 
 typedef struct {
   int x;
@@ -15,7 +16,7 @@ bool isBeastDead(beast* b);
 int toX(int ix);
 int toY(int ix);
 int toIx(int x, int y);
-bool push(bool blocks[], int dir_x, int dir_y, int pos_x, int pos_y);
+bool push(bool blocks[], beast beasts[], int dir_x, int dir_y, int pos_x, int pos_y);
 int error(char* activity);
 
 int block_w = 25;
@@ -28,13 +29,13 @@ int num_blocks_w;
 int num_blocks_h;
 unsigned int last_move_time = 0;
 int beast_speed = 500; // ms between moves
-
 const int num_beasts = 5;
-beast beasts[num_beasts];
 
 int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
     return error("initializing SDL");
+
+  beast beasts[num_beasts];
 
   // starting positions (TODO: make these randomized)
   beasts[0].x = 10;
@@ -111,7 +112,7 @@ int main(int num_args, char* args[]) {
           }
 
           if (dir_x != 0 || dir_y != 0) {
-            if (push(blocks, dir_x, dir_y, player_x, player_y)) {
+            if (push(blocks, beasts, dir_x, dir_y, player_x, player_y)) {
               player_x += dir_x;
               player_y += dir_y;
             }
@@ -250,7 +251,7 @@ int main(int num_args, char* args[]) {
   return 0;
 }
 
-bool push(bool blocks[], int dir_x, int dir_y, int pos_x, int pos_y) {
+bool push(bool blocks[], beast beasts[], int dir_x, int dir_y, int pos_x, int pos_y) {
   int first_x = pos_x + dir_x;
   int first_y = pos_y + dir_y;
   if (first_x < 0 || first_x >= num_blocks_w || first_y < 0 || first_y >= num_blocks_h)
@@ -266,7 +267,7 @@ bool push(bool blocks[], int dir_x, int dir_y, int pos_x, int pos_y) {
 
   bool can_push;
   if (blocks[toIx(second_x, second_y)]) {
-    can_push = push(blocks, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
+    can_push = push(blocks, beasts, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
   }
   else {
     can_push = true;
