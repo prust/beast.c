@@ -4,6 +4,13 @@ Simple clone in C (C99 with SDL) of the 1984 ASCII game [Beast](https://en.wikip
 
 > Alan Brown wrote a routine that would make sound, Derrick [Shadel] wrote a disk I/O routine for saving the high scores, and Mark [Hamilton] wrote a random number generator for me. I distributed Beast as shareware for a few years, and made some money (not much, maybe $100). After WordPerfect came out with the Shell (which allowed multiple programs to be loaded at the same time, but the user could only interact with one at time), I fixed Beast to be "Shell Compatible". WordPerfect bought Beast from me for about $1000 (which my wife and I quickly spent on a video camera), and Beast started shipping with Shell (or Library, what ever they called it).
 
+# Installation
+
+To play Beast:
+* Download [beast-win-0.1.1.zip](https://github.com/prust/beast.c/releases/download/v0.1.1/beast-win-0.1.1.zip) on a Windows computer
+* Unzip it
+* Double-click on `beast.exe`.
+
 ## SDL Setup for OSX
 
 This game relies on the SDL library. Normally this will be bundled with the game, but if you want to compile & run it from scratch, you'll need to create an SDL library and put it somewhere the compiler can find it:
