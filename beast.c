@@ -5,28 +5,41 @@
 
 #include "SDL.h"
 
+typedef unsigned char byte;
+
+#define DELETED 0x1
+#define BLOCK   0x2
+#define BEAST   0x4
+#define PLAYER  0x8
+
 typedef struct {
+  byte flags;
   int x;
   int y;
-} beast;
+} entity;
 
 // forward-declare functions
-void killBeast(beast* b);
-bool isBeastDead(beast* b);
-int toX(int ix);
-int toY(int ix);
-int toIx(int x, int y);
-bool push(bool blocks[], beast beasts[], int dir_x, int dir_y, int pos_x, int pos_y);
+int findAvailPos(entity* grid[]);
+void move(entity* ent, entity* grid[], int x, int y);
+int to_x(int ix);
+int to_y(int ix);
+int to_pos(int x, int y);
+bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y);
 int error(char* activity);
 
 int block_w = 25;
 int block_h = 25;
 int block_density_pct = 30;
-int player_x = 0;
-int player_y = 0;
+entity player = {
+  .flags = PLAYER,
+  .x = 0,
+  .y = 0
+};
 
-int num_blocks_w;
-int num_blocks_h;
+int num_blocks_w = 38;
+int num_blocks_h = 28;
+int grid_len;
+
 unsigned int last_move_time = 0;
 int beast_speed = 500; // ms between moves
 const int num_beasts = 5;
@@ -35,39 +48,39 @@ int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
     return error("initializing SDL");
 
-  beast beasts[num_beasts];
-
-  // starting positions (TODO: make these randomized)
-  beasts[0].x = 10;
-  beasts[0].y = 7;
-  beasts[1].x = 27;
-  beasts[1].y = 2;
-  beasts[2].x = 31;
-  beasts[2].y = 14;
-  beasts[3].x = 15;
-  beasts[3].y = 12;
-  beasts[4].x = 8;
-  beasts[4].y = 20;
-
-  SDL_DisplayMode dm;
-  if (SDL_GetDesktopDisplayMode(0, &dm) < 0)
-    return error("getting display mode");
-
   srand(time(NULL));
 
-  dm.w = 38 * block_w;
-  dm.h = 28 * block_h;
+  // SDL_DisplayMode dm; // gets resolution as struct w/ `w` and `h`
+  // if (SDL_GetDesktopDisplayMode(0, &dm) < 0)
+  //   return error("getting display mode");
 
-  num_blocks_w = dm.w / block_w;
-  num_blocks_h = dm.h / block_h;
-  int num_possible_blocks = num_blocks_w * num_blocks_h;
+  grid_len = num_blocks_w * num_blocks_h;
+  entity* grid[grid_len];
+  for (int i = 0; i < grid_len; ++i)
+    grid[i] = NULL;
 
-  bool blocks[num_possible_blocks];
-  for (int i = 0; i < num_possible_blocks; i++)
-    blocks[i] = (rand() % 100) < block_density_pct;
+  // DRY violation: consolidate below into place_entities()
+  int num_blocks = grid_len * block_density_pct / 100;
+  entity blocks[num_blocks];
+  for (int i = 0; i < num_blocks; ++i) {
+    int pos = findAvailPos(grid);
+    blocks[i].flags = BLOCK;
+    blocks[i].x = to_x(pos);
+    blocks[i].y = to_y(pos);
+    grid[pos] = &blocks[i];
+  }
+
+  entity beasts[num_beasts];
+  for (int i = 0; i < num_beasts; ++i) {
+    int pos = findAvailPos(grid);
+    beasts[i].flags = BEAST;
+    beasts[i].x = to_x(pos);
+    beasts[i].y = to_y(pos);
+    grid[pos] = &beasts[i];
+  }
 
   SDL_Window *window;
-  window = SDL_CreateWindow("Beast", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, dm.w, dm.h, SDL_WINDOW_RESIZABLE);
+  window = SDL_CreateWindow("Beast", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, num_blocks_w * block_w, num_blocks_h * block_h, SDL_WINDOW_RESIZABLE);
   if (!window)
     return error("creating window");
   if (SDL_ShowCursor(SDL_DISABLE) < 0)
@@ -82,7 +95,6 @@ int main(int num_args, char* args[]) {
   bool is_gameover = false;
   int dir_x = 0;
   int dir_y = 0;
-
   while (!is_gameover) {
     SDL_Event evt;
     while (SDL_PollEvent(&evt)) {
@@ -111,11 +123,9 @@ int main(int num_args, char* args[]) {
               break;
           }
 
-          if (dir_x != 0 || dir_y != 0) {
-            if (push(blocks, beasts, dir_x, dir_y, player_x, player_y)) {
-              player_x += dir_x;
-              player_y += dir_y;
-            }
+          if (dir_x || dir_y) {
+            if (push(grid, dir_x, dir_y, player.x, player.y))
+              move(&player, grid, player.x + dir_x, player.y + dir_y);
           }
         break;
       }
@@ -130,24 +140,22 @@ int main(int num_args, char* args[]) {
     if (SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255) < 0)
       return error("setting block color");
 
-    for (int i = 0; i < num_possible_blocks; i++) {
-      if (blocks[i]) {
-        SDL_Rect r = {
-          .x = toX(i) * block_w,
-          .y = toY(i) * block_h,
-          .w = block_w,
-          .h = block_h
-        };
-        if (SDL_RenderFillRect(renderer, &r) < 0)
-          return error("drawing block");
-      }
+    for (int i = 0; i < num_blocks; ++i) {
+      SDL_Rect r = {
+        .x = blocks[i].x * block_w,
+        .y = blocks[i].y * block_h,
+        .w = block_w,
+        .h = block_h
+      };
+      if (SDL_RenderFillRect(renderer, &r) < 0)
+        return error("drawing block");
     }
 
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 140, 255) < 0)
       return error("setting player color");
     SDL_Rect player_rect = {
-      .x = player_x * block_w,
-      .y = player_y * block_h,
+      .x = player.x * block_w,
+      .y = player.y * block_h,
       .w = block_w,
       .h = block_h
     };
@@ -156,9 +164,10 @@ int main(int num_args, char* args[]) {
 
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 60, 255) < 0)
       return error("setting beast color");
-    for(int i = 0; i < num_beasts; ++i) {
-      if (isBeastDead(&beasts[i]))
+    for (int i = 0; i < num_beasts; ++i) {
+      if (beasts[i].flags & DELETED)
         continue;
+
       SDL_Rect beast_rect = {
         .x = beasts[i].x * block_w,
         .y = beasts[i].y * block_h,
@@ -171,7 +180,7 @@ int main(int num_args, char* args[]) {
 
     if (SDL_GetTicks() - last_move_time >= beast_speed) {
       for (int i = 0; i < num_beasts; ++i) {
-        if (isBeastDead(&beasts[i]))
+        if (beasts[i].flags & DELETED)
           continue;
 
         int x = beasts[i].x;
@@ -179,26 +188,33 @@ int main(int num_args, char* args[]) {
 
         int dir_x = 0;
         int dir_y = 0;
-        if (player_x < x)
+        if (player.x < x)
           dir_x = -1;
-        else if (player_x > x)
+        else if (player.x > x)
           dir_x = 1;
 
-        if (player_y < y)
+        if (player.y < y)
           dir_y = -1;
-        else if (player_y > y)
+        else if (player.y > y)
           dir_y = 1;
 
-        // try to move towards the player, if possible
         bool found_direction = true;
-        if (dir_x && dir_y && !blocks[toIx(x + dir_x, y + dir_y)]) {
+
+        // the beast will "get" the player on this move
+        if (abs(player.x - x) <= 1 && abs(player.y - y) <= 1) {
+          is_gameover = true;
+          x = player.x;
+          y = player.y;
+        }
+        // try to move towards the player, if possible
+        else if (dir_x && dir_y && !grid[to_pos(x + dir_x, y + dir_y)]) {
           x += dir_x;
           y += dir_y;
         }
-        else if (dir_x && !blocks[toIx(x + dir_x, y)]) {
+        else if (dir_x && !grid[to_pos(x + dir_x, y)]) {
           x += dir_x;
         }
-        else if (dir_y && !blocks[toIx(x, y + dir_y)]) {
+        else if (dir_y && !grid[to_pos(x, y + dir_y)]) {
           y += dir_y;
         }
         else {
@@ -212,7 +228,7 @@ int main(int num_args, char* args[]) {
                 if (!mv_x && !mv_y)
                   continue; // 0,0 isn't a real move
 
-                if (!blocks[toIx(x + mv_x, y + mv_y)]) {
+                if (!grid[to_pos(x + mv_x, y + mv_y)]) {
                   x = x + mv_x;
                   y = y + mv_y;
                   found_direction = true;
@@ -224,16 +240,10 @@ int main(int num_args, char* args[]) {
         }
 
         // if the beast is surrounded by blocks & has nowhere to move, it blows up
-        if (!found_direction) {
-          killBeast(&beasts[i]);
-        }
-        else {
-          beasts[i].x = x;
-          beasts[i].y = y;
-        }
-        
-        if (x == player_x && y == player_y)
-          is_gameover = true;
+        if (!found_direction)
+          beasts[i].flags |= DELETED; // turn deleted bit on
+        else
+          move(&beasts[i], grid, x, y);
       }
       last_move_time = SDL_GetTicks();
     }
@@ -247,13 +257,14 @@ int main(int num_args, char* args[]) {
   return 0;
 }
 
-bool push(bool blocks[], beast beasts[], int dir_x, int dir_y, int pos_x, int pos_y) {
+bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y) {
   int first_x = pos_x + dir_x;
   int first_y = pos_y + dir_y;
   if (first_x < 0 || first_x >= num_blocks_w || first_y < 0 || first_y >= num_blocks_h)
     return false;
 
-  if (!blocks[toIx(first_x, first_y)])
+  entity* first_ent = grid[to_pos(first_x, first_y)];
+  if (!first_ent)
     return true;
 
   int second_x = pos_x + dir_x*2;
@@ -262,55 +273,72 @@ bool push(bool blocks[], beast beasts[], int dir_x, int dir_y, int pos_x, int po
     return false;
 
   bool can_push;
-  if (blocks[toIx(second_x, second_y)]) {
-    can_push = push(blocks, beasts, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
-  }
-  else {
+  entity* second_ent = grid[to_pos(second_x, second_y)];
+  if (!second_ent) {
     can_push = true;
+  }
+  else if (second_ent->flags & BLOCK) {
+    can_push = push(grid, dir_x, dir_y, pos_x + dir_x, pos_y + dir_y);
+  }
+  else if (second_ent->flags & PLAYER) {
+    can_push = false;
+  }
+  else if (second_ent->flags & BEAST) {
     int third_x = pos_x + dir_x*3;
     int third_y = pos_y + dir_y*3;
 
     // only check for a brick on the other side & the possibility of squishing
     // if we're within bounds
     if (third_x >= 0 && third_x < num_blocks_w && third_y >= 0 && third_y < num_blocks_h) {
-      // check to tell if you're squishing a beast
-      for(int i = 0; i < num_beasts; ++i) {
-        if (beasts[i].x == second_x && beasts[i].y == second_y) {
-
-          // if there's a block on the other side, squish beast between blocks
-          if (blocks[toIx(third_x, third_y)])
-            killBeast(&beasts[i]);
-          // disallow pushing block into beast if there's no block to squish against
-          else
-            return false;
-        }
+      // if there's a block on the other side, squish beast between blocks
+      entity* third_ent = grid[to_pos(third_x, third_y)];
+      if (third_ent && third_ent->flags & BLOCK) {
+        second_ent->flags |= DELETED; // turn deleted bit on
+        can_push = true;
       }
+      else {
+        can_push = false;
+      }
+    }
+    else {
+      can_push = false;
     }
   }
 
-  if (can_push) {
-    blocks[toIx(first_x, first_y)] = false;
-    blocks[toIx(second_x, second_y)] = true;
-  }
+  if (can_push)
+    move(first_ent, grid, second_x, second_y);
+
   return can_push;
 }
 
-void killBeast(beast* b) {
-  b->x = -1;
-  b->y = -1;
+int findAvailPos(entity* grid[]) {
+  int x;
+  int y;
+  int pos;
+  do {
+    x = rand() % num_blocks_w;
+    y = rand() % num_blocks_h;
+    pos = to_pos(x, y);
+  } while (grid[pos]);
+  return pos;
 }
 
-bool isBeastDead(beast* b) {
-  return b->x == -1 && b->y == -1;
+void move(entity* ent, entity* grid[], int x, int y) {
+  int prev_pos = to_pos(ent->x, ent->y);
+  grid[prev_pos] = NULL;
+  
+  ent->x = x;
+  ent->y = y;
+  grid[to_pos(x, y)] = ent;
 }
 
-int toX(int ix) {
+int to_x(int ix) {
   return ix % num_blocks_w;
 }
-int toY(int ix) {
+int to_y(int ix) {
   return ix / num_blocks_w;
 }
-int toIx(int x, int y) {
+int to_pos(int x, int y) {
   return x + y * num_blocks_w;
 }
 
