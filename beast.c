@@ -190,6 +190,7 @@ int main(int num_args, char* args[]) {
           dir_y = 1;
 
         // try to move towards the player, if possible
+        bool found_direction = true;
         if (dir_x && dir_y && !blocks[toIx(x + dir_x, y + dir_y)]) {
           x += dir_x;
           y += dir_y;
@@ -200,42 +201,37 @@ int main(int num_args, char* args[]) {
         else if (dir_y && !blocks[toIx(x, y + dir_y)]) {
           y += dir_y;
         }
-        // otherwise, try all other combinations of directions
-        else if (!blocks[toIx(x + 1, y + 1)]) {
-          x++;
-          y++;
-        }
-        else if (!blocks[toIx(x + 1, y)]) {
-          x++;
-        }
-        else if (!blocks[toIx(x, y + 1)]) {
-          y++;
-        }
-        else if (!blocks[toIx(x + 1, y - 1)]) {
-          x++;
-          y--;
-        }
-        else if (!blocks[toIx(x - 1, y + 1)]) {
-          x--;
-          y++;
-        }
-        else if (!blocks[toIx(x - 1, y)]) {
-          x--;
-        }
-        else if (!blocks[toIx(x, y - 1)]) {
-          y--;
-        }
-        else if (!blocks[toIx(x - 1, y - 1)]) {
-          x--;
-          y--;
-        }
-        // if the beast is surrounded by blocks & has nowhere to move, it blows up
         else {
-          killBeast(&beasts[i]);
+          // try all other combinations of directions
+          // QUESTION: What about going off the screen/out-of-bounds?
+          // we need to surround the game w/ solid immovable blocks, that'll simplify
+          found_direction = false;
+          for (int mv_x = -1; mv_x <= 1; ++mv_x) {
+            if (!found_direction) {
+              for (int mv_y = -1; mv_y <= 1; ++mv_y) {
+                if (!mv_x && !mv_y)
+                  continue; // 0,0 isn't a real move
+
+                if (!blocks[toIx(x + mv_x, y + mv_y)]) {
+                  x = x + mv_x;
+                  y = y + mv_y;
+                  found_direction = true;
+                  break;
+                }
+              }
+            }
+          }
         }
 
-        beasts[i].x = x;
-        beasts[i].y = y;
+        // if the beast is surrounded by blocks & has nowhere to move, it blows up
+        if (!found_direction) {
+          killBeast(&beasts[i]);
+        }
+        else {
+          beasts[i].x = x;
+          beasts[i].y = y;
+        }
+        
         if (x == player_x && y == player_y)
           is_gameover = true;
       }
