@@ -144,6 +144,9 @@ int main(int num_args, char* args[]) {
   int dir_x = 0;
   int dir_y = 0;
   while (!is_gameover) {
+    const Uint8 *state = SDL_GetKeyboardState(NULL);
+    bool is_spacebar_pressed = state[SDL_SCANCODE_SPACE];
+
     SDL_Event evt;
     while (SDL_PollEvent(&evt)) {
       switch(evt.type) {
@@ -172,8 +175,16 @@ int main(int num_args, char* args[]) {
           }
 
           if (dir_x || dir_y) {
-            if (push(grid, dir_x, dir_y, player.x, player.y))
+            if (push(grid, dir_x, dir_y, player.x, player.y)) {
+              int orig_x = player.x;
+              int orig_y = player.y;
               move(&player, grid, player.x + dir_x, player.y + dir_y);
+              if (is_spacebar_pressed) {
+                entity* ent_behind = grid[to_pos(orig_x - dir_x, orig_y - dir_y)];
+                if (ent_behind && (ent_behind->flags & BLOCK) && !(ent_behind->flags & STATIC))
+                  move(ent_behind, grid, orig_x, orig_y);
+              }
+            }
           }
         break;
       }
