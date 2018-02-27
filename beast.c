@@ -11,6 +11,7 @@ typedef unsigned char byte;
 #define BLOCK   0x2
 #define BEAST   0x4
 #define PLAYER  0x8
+#define STATIC 0x10
 
 typedef struct {
   byte flags;
@@ -25,19 +26,19 @@ int to_x(int ix);
 int to_y(int ix);
 int to_pos(int x, int y);
 bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y);
-int error(char* activity);
+void error(char* activity);
 
 int block_w = 25;
 int block_h = 25;
 int block_density_pct = 30;
 entity player = {
   .flags = PLAYER,
-  .x = 0,
-  .y = 0
+  .x = 1,
+  .y = 1
 };
 
-int num_blocks_w = 38;
-int num_blocks_h = 28;
+int num_blocks_w = 40;
+int num_blocks_h = 30;
 int grid_len;
 
 unsigned int last_move_time = 0;
@@ -46,18 +47,65 @@ const int num_beasts = 5;
 
 int main(int num_args, char* args[]) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
-    return error("initializing SDL");
+    error("initializing SDL");
 
   srand(time(NULL));
 
   // SDL_DisplayMode dm; // gets resolution as struct w/ `w` and `h`
   // if (SDL_GetDesktopDisplayMode(0, &dm) < 0)
-  //   return error("getting display mode");
+  //   error("getting display mode");
 
   grid_len = num_blocks_w * num_blocks_h;
   entity* grid[grid_len];
   for (int i = 0; i < grid_len; ++i)
     grid[i] = NULL;
+
+  grid[to_pos(player.x, player.y)] = &player;
+
+  int num_static_blocks = num_blocks_w * 2 + (num_blocks_h - 2) * 2 + 10;
+  entity static_blocks[num_static_blocks];
+  int ix = 0;
+  for (int x = 0; x < num_blocks_w; ++x) {
+    // top row
+    static_blocks[ix].flags = (BLOCK | STATIC);
+    static_blocks[ix].x = x;
+    static_blocks[ix].y = 0;
+    grid[to_pos(x, 0)] = &static_blocks[ix];
+    ix++;
+
+    // bottom row
+    static_blocks[ix].flags = (BLOCK | STATIC);
+    static_blocks[ix].x = x;
+    static_blocks[ix].y = num_blocks_h - 1;
+    grid[to_pos(x, num_blocks_h - 1)] = &static_blocks[ix];
+    ix++;
+  }
+
+  for (int y = 1; y < num_blocks_h - 1; ++y) {
+    // left row
+    static_blocks[ix].flags = (BLOCK | STATIC);
+    static_blocks[ix].x = 0;
+    static_blocks[ix].y = y;
+    grid[to_pos(0, y)] = &static_blocks[ix];
+    ix++;
+
+    // right row
+    static_blocks[ix].flags = (BLOCK | STATIC);
+    static_blocks[ix].x = num_blocks_w - 1;
+    static_blocks[ix].y = y;
+    grid[to_pos(num_blocks_w - 1, y)] = &static_blocks[ix];
+    ix++;
+  }
+
+  // additional 10 static blocks in the playing field
+  for (int i = 0; i < 10; ++i) {
+    int pos = findAvailPos(grid);
+    static_blocks[ix].flags = (BLOCK | STATIC);
+    static_blocks[ix].x = to_x(pos);
+    static_blocks[ix].y = to_y(pos);
+    grid[pos] = &static_blocks[ix];
+    ix++;
+  }
 
   // DRY violation: consolidate below into place_entities()
   int num_blocks = grid_len * block_density_pct / 100;
@@ -82,15 +130,15 @@ int main(int num_args, char* args[]) {
   SDL_Window *window;
   window = SDL_CreateWindow("Beast", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, num_blocks_w * block_w, num_blocks_h * block_h, SDL_WINDOW_RESIZABLE);
   if (!window)
-    return error("creating window");
+    error("creating window");
   if (SDL_ShowCursor(SDL_DISABLE) < 0)
-    return error("hiding cursor");
+    error("hiding cursor");
   // if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
-  //   return error("setting fullscreen");
+  //   error("setting fullscreen");
 
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   if (!renderer)
-    return error("creating renderer");
+    error("creating renderer");
 
   bool is_gameover = false;
   int dir_x = 0;
@@ -133,12 +181,12 @@ int main(int num_args, char* args[]) {
 
     // set BG color
     if (SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255) < 0)
-      return error("setting bg color");
+      error("setting bg color");
     if (SDL_RenderClear(renderer) < 0)
-      return error("clearing renderer");
+      error("clearing renderer");
 
     if (SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255) < 0)
-      return error("setting block color");
+      error("setting block color");
 
     for (int i = 0; i < num_blocks; ++i) {
       SDL_Rect r = {
@@ -148,11 +196,25 @@ int main(int num_args, char* args[]) {
         .h = block_h
       };
       if (SDL_RenderFillRect(renderer, &r) < 0)
-        return error("drawing block");
+        error("drawing block");
+    }
+
+    if (SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255) < 0)
+      error("setting block color");
+
+    for (int i = 0; i < num_static_blocks; ++i) {
+      SDL_Rect r = {
+        .x = static_blocks[i].x * block_w,
+        .y = static_blocks[i].y * block_h,
+        .w = block_w,
+        .h = block_h
+      };
+      if (SDL_RenderFillRect(renderer, &r) < 0)
+        error("drawing block");
     }
 
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 140, 255) < 0)
-      return error("setting player color");
+      error("setting player color");
     SDL_Rect player_rect = {
       .x = player.x * block_w,
       .y = player.y * block_h,
@@ -160,10 +222,10 @@ int main(int num_args, char* args[]) {
       .h = block_h
     };
     if (SDL_RenderFillRect(renderer, &player_rect) < 0)
-      return error("filling rect");
+      error("filling rect");
 
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 60, 255) < 0)
-      return error("setting beast color");
+      error("setting beast color");
     for (int i = 0; i < num_beasts; ++i) {
       if (beasts[i].flags & DELETED)
         continue;
@@ -175,7 +237,7 @@ int main(int num_args, char* args[]) {
         .h = block_h
       };
       if (SDL_RenderFillRect(renderer, &beast_rect) < 0)
-        return error("filling beast rect");
+        error("filling beast rect");
     }
 
     if (SDL_GetTicks() - last_move_time >= beast_speed) {
@@ -219,8 +281,6 @@ int main(int num_args, char* args[]) {
         }
         else {
           // try all other combinations of directions
-          // QUESTION: What about going off the screen/out-of-bounds?
-          // we need to surround the game w/ solid immovable blocks, that'll simplify
           found_direction = false;
           for (int mv_x = -1; mv_x <= 1; ++mv_x) {
             if (!found_direction) {
@@ -258,20 +318,14 @@ int main(int num_args, char* args[]) {
 }
 
 bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y) {
-  int first_x = pos_x + dir_x;
-  int first_y = pos_y + dir_y;
-  if (first_x < 0 || first_x >= num_blocks_w || first_y < 0 || first_y >= num_blocks_h)
-    return false;
-
-  entity* first_ent = grid[to_pos(first_x, first_y)];
+  entity* first_ent = grid[to_pos(pos_x + dir_x, pos_y + dir_y)];
   if (!first_ent)
     return true;
+  if (first_ent->flags & STATIC)
+    return false;
 
   int second_x = pos_x + dir_x*2;
   int second_y = pos_y + dir_y*2;
-  if (second_x < 0 || second_x >= num_blocks_w || second_y < 0 || second_y >= num_blocks_h)
-    return false;
-
   bool can_push;
   entity* second_ent = grid[to_pos(second_x, second_y)];
   if (!second_ent) {
@@ -284,21 +338,11 @@ bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y) {
     can_push = false;
   }
   else if (second_ent->flags & BEAST) {
-    int third_x = pos_x + dir_x*3;
-    int third_y = pos_y + dir_y*3;
-
-    // only check for a brick on the other side & the possibility of squishing
-    // if we're within bounds
-    if (third_x >= 0 && third_x < num_blocks_w && third_y >= 0 && third_y < num_blocks_h) {
-      // if there's a block on the other side, squish beast between blocks
-      entity* third_ent = grid[to_pos(third_x, third_y)];
-      if (third_ent && third_ent->flags & BLOCK) {
-        second_ent->flags |= DELETED; // turn deleted bit on
-        can_push = true;
-      }
-      else {
-        can_push = false;
-      }
+    // if there's a block on the other side, squish beast between blocks
+    entity* third_ent = grid[to_pos(pos_x + dir_x*3, pos_y + dir_y*3)];
+    if (third_ent && third_ent->flags & BLOCK) {
+      second_ent->flags |= DELETED; // turn deleted bit on
+      can_push = true;
     }
     else {
       can_push = false;
@@ -339,11 +383,16 @@ int to_y(int ix) {
   return ix / num_blocks_w;
 }
 int to_pos(int x, int y) {
-  return x + y * num_blocks_w;
+  int pos = x + y * num_blocks_w;
+  if (pos < 0)
+    error("position out of bounds (negative)");
+  if (pos >= grid_len)
+    error("position out of bounds (greater than grid size)");
+  return pos;
 }
 
-int error(char* activity) {
+void error(char* activity) {
   printf("%s failed: %s\n", activity, SDL_GetError());
   SDL_Quit();
-  return -1;
+  exit(-1);
 }
