@@ -11,6 +11,9 @@ To play Beast:
 * Unzip it
 * Double-click on `beast.exe`.
 
+TODO:
+* Don't spawn a beast too near to the player
+
 ## SDL Setup for OSX
 
 This game relies on the SDL library. Normally this will be bundled with the game, but if you want to compile & run it from scratch, you'll need to create an SDL library and put it somewhere the compiler can find it:

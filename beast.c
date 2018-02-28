@@ -22,6 +22,9 @@ typedef struct {
 // forward-declare functions
 int findAvailPos(entity* grid[]);
 void move(entity* ent, entity* grid[], int x, int y);
+void set_pos(entity* ent, entity* grid[], int pos);
+void set_xy(entity* ent, entity* grid[], int x, int y);
+void remove_from_grid(entity* ent, entity* grid[]);
 int to_x(int ix);
 int to_y(int ix);
 int to_pos(int x, int y);
@@ -72,41 +75,29 @@ int main(int num_args, char* args[]) {
   for (int x = 0; x < num_blocks_w; ++x) {
     // top row
     static_blocks[ix].flags = (BLOCK | STATIC);
-    static_blocks[ix].x = x;
-    static_blocks[ix].y = 0;
-    grid[to_pos(x, 0)] = &static_blocks[ix];
+    set_xy(&static_blocks[ix], grid, x, 0);
     ix++;
 
     // bottom row
     static_blocks[ix].flags = (BLOCK | STATIC);
-    static_blocks[ix].x = x;
-    static_blocks[ix].y = num_blocks_h - 1;
-    grid[to_pos(x, num_blocks_h - 1)] = &static_blocks[ix];
+    set_xy(&static_blocks[ix], grid, x, num_blocks_h - 1);
     ix++;
   }
 
   for (int y = 1; y < num_blocks_h - 1; ++y) {
     // left row
     static_blocks[ix].flags = (BLOCK | STATIC);
-    static_blocks[ix].x = 0;
-    static_blocks[ix].y = y;
-    grid[to_pos(0, y)] = &static_blocks[ix];
+    set_xy(&static_blocks[ix], grid, 0, y);
     ix++;
 
     // right row
     static_blocks[ix].flags = (BLOCK | STATIC);
-    static_blocks[ix].x = num_blocks_w - 1;
-    static_blocks[ix].y = y;
-    grid[to_pos(num_blocks_w - 1, y)] = &static_blocks[ix];
+    set_xy(&static_blocks[ix], grid, num_blocks_w - 1, y);
     ix++;
   }
 
-  for (int i = 0; i < num_players; ++i) {
-    int pos = findAvailPos(grid);
-    players[i].x = to_x(pos);
-    players[i].y = to_y(pos);
-    grid[pos] = &players[i];
-  }
+  // set the position of the 1st player
+  set_pos(&players[0], grid, findAvailPos(grid));
 
   // additional 10 static blocks in the playing field
   for (int i = 0; i < 10; ++i) {
@@ -201,16 +192,11 @@ int main(int num_args, char* args[]) {
               break;
             case SDLK_2:
               // hitting "2" will toggle the 2nd player
-              if (players[1].flags & DELETED) {
-                int pos = findAvailPos(grid);
-                players[1].x = to_x(pos);
-                players[1].y = to_y(pos);
-                grid[pos] = &players[1];
-                printf("turning on 2nd player (%d, %d)\n", players[1].x, players[1].y);
-              }
-              else {
-                printf("turning off 2nd player\n");
-              }
+              if (players[1].flags & DELETED)
+                set_pos(&players[1], grid, findAvailPos(grid));
+              else
+                remove_from_grid(&players[1], grid);
+
               players[1].flags ^= DELETED; // toggle the bit
               break;
           }
@@ -369,10 +355,13 @@ int main(int num_args, char* args[]) {
         }
 
         // if the beast is surrounded by blocks & has nowhere to move, it blows up
-        if (!found_direction)
+        if (!found_direction) {
           beasts[i].flags |= DELETED; // turn deleted bit on
-        else
+          remove_from_grid(&beasts[i], grid);
+        }
+        else {
           move(&beasts[i], grid, x, y);
+        }
       }
       last_move_time = SDL_GetTicks();
     }
@@ -411,6 +400,7 @@ bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y) {
     entity* third_ent = grid[to_pos(pos_x + dir_x*3, pos_y + dir_y*3)];
     if (third_ent && third_ent->flags & BLOCK) {
       second_ent->flags |= DELETED; // turn deleted bit on
+      remove_from_grid(second_ent, grid);
       can_push = true;
     }
     else {
@@ -437,12 +427,23 @@ int findAvailPos(entity* grid[]) {
 }
 
 void move(entity* ent, entity* grid[], int x, int y) {
-  int prev_pos = to_pos(ent->x, ent->y);
-  grid[prev_pos] = NULL;
-  
+  remove_from_grid(ent, grid);
+  set_xy(ent, grid, x, y);
+}
+
+void set_pos(entity* ent, entity* grid[], int pos) {
+  set_xy(ent, grid, to_x(pos), to_y(pos));
+}
+
+void set_xy(entity* ent, entity* grid[], int x, int y) {
   ent->x = x;
   ent->y = y;
   grid[to_pos(x, y)] = ent;
+}
+
+void remove_from_grid(entity* ent, entity* grid[]) {
+  int prev_pos = to_pos(ent->x, ent->y);
+  grid[prev_pos] = NULL;
 }
 
 int to_x(int ix) {
