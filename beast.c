@@ -31,11 +31,17 @@ void error(char* activity);
 int block_w = 25;
 int block_h = 25;
 int block_density_pct = 30;
-entity player = {
+
+const int num_players = 2;
+entity players[num_players] = {{
   .flags = PLAYER,
   .x = 1,
   .y = 1
-};
+}, {
+  .flags = (PLAYER | DELETED),
+  .x = 2,
+  .y = 2
+}};
 
 int num_blocks_w = 40;
 int num_blocks_h = 30;
@@ -59,8 +65,6 @@ int main(int num_args, char* args[]) {
   entity* grid[grid_len];
   for (int i = 0; i < grid_len; ++i)
     grid[i] = NULL;
-
-  grid[to_pos(player.x, player.y)] = &player;
 
   int num_static_blocks = num_blocks_w * 2 + (num_blocks_h - 2) * 2 + 10;
   entity static_blocks[num_static_blocks];
@@ -95,6 +99,13 @@ int main(int num_args, char* args[]) {
     static_blocks[ix].y = y;
     grid[to_pos(num_blocks_w - 1, y)] = &static_blocks[ix];
     ix++;
+  }
+
+  for (int i = 0; i < num_players; ++i) {
+    int pos = findAvailPos(grid);
+    players[i].x = to_x(pos);
+    players[i].y = to_y(pos);
+    grid[pos] = &players[i];
   }
 
   // additional 10 static blocks in the playing field
@@ -141,8 +152,10 @@ int main(int num_args, char* args[]) {
     error("creating renderer");
 
   bool is_gameover = false;
-  int dir_x = 0;
-  int dir_y = 0;
+  int p1_dir_x = 0;
+  int p1_dir_y = 0;
+  int p2_dir_x = 0;
+  int p2_dir_y = 0;
   while (!is_gameover) {
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     bool is_spacebar_pressed = state[SDL_SCANCODE_SPACE];
@@ -154,35 +167,75 @@ int main(int num_args, char* args[]) {
           is_gameover = true;
           break;
         case SDL_KEYDOWN:
-          dir_x = 0;
-          dir_y = 0;
+          p1_dir_x = 0;
+          p1_dir_y = 0;
+          p2_dir_x = 0;
+          p2_dir_y = 0;
           switch (evt.key.keysym.sym) {
             case SDLK_ESCAPE:
               is_gameover = true;
               break;
             case SDLK_LEFT:
-              dir_x = -1;
+              p1_dir_x = -1;
               break;
             case SDLK_RIGHT:
-              dir_x = 1;
+              p1_dir_x = 1;
               break;
             case SDLK_UP:
-              dir_y = -1;
+              p1_dir_y = -1;
               break;
             case SDLK_DOWN:
-              dir_y = 1;
+              p1_dir_y = 1;
+              break;
+            case SDLK_a:
+              p2_dir_x = -1;
+              break;
+            case SDLK_d:
+              p2_dir_x = 1;
+              break;
+            case SDLK_s:
+              p2_dir_y = 1;
+              break;
+            case SDLK_w:
+              p2_dir_y = -1;
+              break;
+            case SDLK_2:
+              // hitting "2" will toggle the 2nd player
+              if (players[1].flags & DELETED) {
+                int pos = findAvailPos(grid);
+                players[1].x = to_x(pos);
+                players[1].y = to_y(pos);
+                grid[pos] = &players[1];
+                printf("turning on 2nd player (%d, %d)\n", players[1].x, players[1].y);
+              }
+              else {
+                printf("turning off 2nd player\n");
+              }
+              players[1].flags ^= DELETED; // toggle the bit
               break;
           }
 
-          if (dir_x || dir_y) {
-            if (push(grid, dir_x, dir_y, player.x, player.y)) {
-              int orig_x = player.x;
-              int orig_y = player.y;
-              move(&player, grid, player.x + dir_x, player.y + dir_y);
-              if (is_spacebar_pressed) {
-                entity* ent_behind = grid[to_pos(orig_x - dir_x, orig_y - dir_y)];
-                if (ent_behind && (ent_behind->flags & BLOCK) && !(ent_behind->flags & STATIC))
-                  move(ent_behind, grid, orig_x, orig_y);
+          for (int i = 0; i < num_players; ++i) {
+            int dir_x, dir_y;
+            if (i == 0) {
+              dir_x = p1_dir_x;
+              dir_y = p1_dir_y;
+            }
+            else if (i == 1) {
+              dir_x = p2_dir_x;
+              dir_y = p2_dir_y;
+            }
+
+            if ((dir_x || dir_y) && !(players[i].flags & DELETED)) {
+              if (push(grid, dir_x, dir_y, players[i].x, players[i].y)) {
+                int orig_x = players[i].x;
+                int orig_y = players[i].y;
+                move(&players[i], grid, players[i].x + dir_x, players[i].y + dir_y);
+                if (is_spacebar_pressed) {
+                  entity* ent_behind = grid[to_pos(orig_x - dir_x, orig_y - dir_y)];
+                  if (ent_behind && (ent_behind->flags & BLOCK) && !(ent_behind->flags & STATIC))
+                    move(ent_behind, grid, orig_x, orig_y);
+                }
               }
             }
           }
@@ -226,14 +279,19 @@ int main(int num_args, char* args[]) {
 
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 140, 255) < 0)
       error("setting player color");
-    SDL_Rect player_rect = {
-      .x = player.x * block_w,
-      .y = player.y * block_h,
-      .w = block_w,
-      .h = block_h
-    };
-    if (SDL_RenderFillRect(renderer, &player_rect) < 0)
-      error("filling rect");
+    for (int i = 0; i < num_players; ++i) {
+      if (players[i].flags & DELETED)
+        continue;
+
+      SDL_Rect player_rect = {
+        .x = players[i].x * block_w,
+        .y = players[i].y * block_h,
+        .w = block_w,
+        .h = block_h
+      };
+      if (SDL_RenderFillRect(renderer, &player_rect) < 0)
+        error("filling rect");
+    }
 
     if (SDL_SetRenderDrawColor(renderer, 140, 60, 60, 255) < 0)
       error("setting beast color");
@@ -261,23 +319,23 @@ int main(int num_args, char* args[]) {
 
         int dir_x = 0;
         int dir_y = 0;
-        if (player.x < x)
+        if (players[0].x < x)
           dir_x = -1;
-        else if (player.x > x)
+        else if (players[0].x > x)
           dir_x = 1;
 
-        if (player.y < y)
+        if (players[0].y < y)
           dir_y = -1;
-        else if (player.y > y)
+        else if (players[0].y > y)
           dir_y = 1;
 
         bool found_direction = true;
 
-        // the beast will "get" the player on this move
-        if (abs(player.x - x) <= 1 && abs(player.y - y) <= 1) {
+        // the beast will "get" the players[0] on this move
+        if (abs(players[0].x - x) <= 1 && abs(players[0].y - y) <= 1) {
           is_gameover = true;
-          x = player.x;
-          y = player.y;
+          x = players[0].x;
+          y = players[0].y;
         }
         // try to move towards the player, if possible
         else if (dir_x && dir_y && !grid[to_pos(x + dir_x, y + dir_y)]) {
