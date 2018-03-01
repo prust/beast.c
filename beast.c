@@ -34,6 +34,7 @@ void error(char* activity);
 int block_w = 25;
 int block_h = 25;
 int block_density_pct = 30;
+int starting_distance = 15;
 
 const int num_players = 2;
 entity players[num_players] = {{
@@ -122,7 +123,11 @@ int main(int num_args, char* args[]) {
 
   entity beasts[num_beasts];
   for (int i = 0; i < num_beasts; ++i) {
-    int pos = findAvailPos(grid);
+    int pos;
+    do {
+      pos = findAvailPos(grid);
+    } while (abs(players[0].x - to_x(pos)) < starting_distance && abs(players[0].y - to_y(pos)) < starting_distance);
+
     beasts[i].flags = BEAST;
     beasts[i].x = to_x(pos);
     beasts[i].y = to_y(pos);
