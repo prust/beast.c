@@ -29,6 +29,7 @@ int to_x(int ix);
 int to_y(int ix);
 int to_pos(int x, int y);
 bool push(entity* grid[], int dir_x, int dir_y, int pos_x, int pos_y);
+void toggleFullScreen(SDL_Window *win);
 void error(char* activity);
 
 int block_w = 25;
@@ -140,8 +141,6 @@ int main(int num_args, char* args[]) {
     error("creating window");
   if (SDL_ShowCursor(SDL_DISABLE) < 0)
     error("hiding cursor");
-  // if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
-  //   error("setting fullscreen");
 
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   if (!renderer)
@@ -155,7 +154,7 @@ int main(int num_args, char* args[]) {
   while (!is_gameover) {
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     bool is_spacebar_pressed = state[SDL_SCANCODE_SPACE];
-
+    
     SDL_Event evt;
     while (SDL_PollEvent(&evt)) {
       switch(evt.type) {
@@ -194,6 +193,9 @@ int main(int num_args, char* args[]) {
               break;
             case SDLK_w:
               p2_dir_y = -1;
+              break;
+            case SDLK_f:
+              toggleFullScreen(window);
               break;
             case SDLK_2:
               // hitting "2" will toggle the 2nd player
@@ -464,6 +466,17 @@ int to_pos(int x, int y) {
   if (pos >= grid_len)
     error("position out of bounds (greater than grid size)");
   return pos;
+}
+
+void toggleFullScreen(SDL_Window *win) {
+  Uint32 flags = SDL_GetWindowFlags(win);
+  if ((flags & SDL_WINDOW_FULLSCREEN_DESKTOP) || (flags & SDL_WINDOW_FULLSCREEN))
+    flags = 0;
+  else
+    flags = SDL_WINDOW_FULLSCREEN;
+
+  if (SDL_SetWindowFullscreen(win, flags) < 0)
+    error("Toggling fullscreen mode failed");
 }
 
 void error(char* activity) {
